@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProfileRole {
+  CLIENT
+  RIDER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PREPARING
+  ON_WAY
+  DELIVERED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  icon      String?
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  stock       Int      @default(0)
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  storeId    String?  @db.Uuid
+  store      Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([categoryId])
+  @@index([isActive])
+  @@index([storeId])
+}
+
+model Profile {
+  id           String      @id @db.Uuid
+  email        String      @unique
+  full_name    String
+  phone        String?
+  role         ProfileRole
+  vehicle_type String?
+  plate_number String?
+  is_online    Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  stores       Store[]
+}
+
+model Store {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  ownerId   String    @db.Uuid
+  address   String
+  imageUrl  String?
+  isOpen    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  owner     Profile   @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  products  Product[]
+  orders    Order[]
+
+  @@index([ownerId])
+}
+
+model ClientProfile {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @unique @db.Uuid
+  fullName       String
+  defaultAddress String?
+  coordinates    Json?
+  phone          String?
+  createdAt      DateTime @default(now())
+  orders         Order[]
+}
+
+model RiderProfile {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @unique @db.Uuid
+  vehicleType     String
+  plateNumber     String
+  isAvailable     Boolean  @default(false)
+  currentLocation Json?
+  createdAt       DateTime @default(now())
+  orders          Order[]
+}
+
+model Order {
+  id              String        @id @default(uuid()) @db.Uuid
+  clientProfileId String        @db.Uuid
+  storeId         String        @db.Uuid
+  riderProfileId  String?       @db.Uuid
+  status          OrderStatus   @default(PENDING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  clientProfile   ClientProfile @relation(fields: [clientProfileId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store           Store         @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  riderProfile    RiderProfile? @relation(fields: [riderProfileId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([clientProfileId])
+  @@index([storeId])
+  @@index([riderProfileId])
+  @@index([status])
+}

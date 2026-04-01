@@ -8,6 +8,7 @@ import 'package:peya_app/pages/client_map_page.dart';
 import 'package:peya_app/pages/rider_orders_map_page.dart';
 import 'package:peya_app/services/auth_service.dart';
 import 'package:peya_app/state/app_flow_state.dart';
+import 'package:peya_app/state/cart_state.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
@@ -56,12 +57,21 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   late final Future<bool> _supabaseInitFuture;
   late final AppFlowState _appFlowState;
+  late final CartState _cartState;
 
   @override
   void initState() {
     super.initState();
     _appFlowState = AppFlowState();
+    _cartState = CartState();
     _supabaseInitFuture = _initializeApp();
+  }
+
+  @override
+  void dispose() {
+    _cartState.dispose();
+    _appFlowState.dispose();
+    super.dispose();
   }
 
   Future<bool> _initializeApp() async {
@@ -80,10 +90,12 @@ class _MyAppState extends State<MyApp> {
     const brandGreen = Color(0xFF00796B);
     return AppFlowScope(
       state: _appFlowState,
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Peya',
-        theme: ThemeData(
+      child: CartScope(
+        state: _cartState,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Peya',
+          theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: brandGreen),
           scaffoldBackgroundColor: Colors.white,
           textTheme: GoogleFonts.interTextTheme(),
@@ -119,27 +131,28 @@ class _MyAppState extends State<MyApp> {
           ),
           useMaterial3: true,
         ),
-        home: FutureBuilder<bool>(
-          future: _supabaseInitFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
+          home: FutureBuilder<bool>(
+            future: _supabaseInitFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              final supabaseReady = snapshot.data ?? false;
+              if (!supabaseReady) {
+                return const _SupabaseConfigErrorPage();
+              }
+
+              return StreamBuilder<AuthState>(
+                stream: Supabase.instance.client.auth.onAuthStateChange,
+                builder: (context, snapshot) {
+                  return const _RoleGatePage();
+                },
               );
-            }
-
-            final supabaseReady = snapshot.data ?? false;
-            if (!supabaseReady) {
-              return const _SupabaseConfigErrorPage();
-            }
-
-            return StreamBuilder<AuthState>(
-              stream: Supabase.instance.client.auth.onAuthStateChange,
-              builder: (context, snapshot) {
-                return const _RoleGatePage();
-              },
-            );
-          },
+            },
+          ),
         ),
       ),
     );

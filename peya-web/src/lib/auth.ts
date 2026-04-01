@@ -16,6 +16,8 @@ export type AuthPayload = {
   sub: string;
   email: string;
   name: string;
+  /** Valor del enum `Role` en Prisma (ADMIN, VENDOR, etc.) */
+  role: string;
 };
 
 export async function signSessionToken(payload: AuthPayload) {

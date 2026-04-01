@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Role } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -42,6 +42,16 @@ async function upsertProductByName(input: {
   });
 }
 
+async function ensureProductCategory(name: string) {
+  const existing = await prisma.productCategory.findFirst({
+    where: { name }
+  });
+  if (existing) return existing;
+  return prisma.productCategory.create({
+    data: { name }
+  });
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash("admin123", 10);
 
@@ -49,41 +59,43 @@ async function main() {
     where: { email: "admin@test.com" },
     update: {
       name: "Administrador",
-      passwordHash
+      passwordHash,
+      role: Role.ADMIN
     },
     create: {
       email: "admin@test.com",
       name: "Administrador",
-      passwordHash
+      passwordHash,
+      role: Role.ADMIN
     }
   });
 
-  const platosDeFondo = await prisma.category.upsert({
-    where: { name: "Platos de Fondo" },
-    update: { icon: "utensils" },
+  const vendorHash = await bcrypt.hash("vendor123", 10);
+  await prisma.user.upsert({
+    where: { email: "vendor@test.com" },
+    update: {
+      name: "Tienda Demo",
+      passwordHash: vendorHash,
+      role: Role.VENDOR
+    },
     create: {
-      name: "Platos de Fondo",
-      icon: "utensils"
+      email: "vendor@test.com",
+      name: "Tienda Demo",
+      passwordHash: vendorHash,
+      role: Role.VENDOR
     }
   });
 
-  await prisma.category.upsert({
-    where: { name: "Bebidas" },
-    update: { icon: "cup-soda" },
-    create: {
-      name: "Bebidas",
-      icon: "cup-soda"
-    }
-  });
-
-  await prisma.category.upsert({
-    where: { name: "Postres" },
-    update: { icon: "ice-cream" },
-    create: {
-      name: "Postres",
-      icon: "ice-cream"
-    }
-  });
+  const platosDeFondo = await ensureProductCategory("Platos de Fondo");
+  await ensureProductCategory("Bebidas");
+  await ensureProductCategory("Postres");
+  await ensureProductCategory("Pizza");
+  await ensureProductCategory("Pollo a la brasa");
+  await ensureProductCategory("Cevichería");
+  await ensureProductCategory("Chifa");
+  await ensureProductCategory("Hamburguesas y sanguches");
+  await ensureProductCategory("Parrillas");
+  await ensureProductCategory("Desayunos");
 
   await upsertProductByName({
     name: "Lomo Saltado",

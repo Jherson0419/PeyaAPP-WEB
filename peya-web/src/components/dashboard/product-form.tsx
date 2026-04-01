@@ -5,13 +5,16 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Smartphone, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
-import type { ProductActionState } from "@/app/dashboard/productos/actions";
-import { uploadProductImage } from "@/app/dashboard/productos/upload-actions";
+import type { ProductActionState } from "@/app/actions/product-actions";
+import { uploadProductImage } from "@/app/actions/product-upload-actions";
 
 export type CategoryOption = { id: string; name: string };
+export type BranchOption = { id: string; name: string };
 
 type ProductFormProps = {
   categories: CategoryOption[];
+  branches: BranchOption[];
+  role: "ADMIN" | "VENDOR";
   mode: "create" | "edit";
   action: (state: ProductActionState, formData: FormData) => Promise<ProductActionState>;
   defaultValues?: {
@@ -20,13 +23,25 @@ type ProductFormProps = {
     description: string;
     price: string;
     stock: string;
+    storeId?: string;
+    isActive?: boolean;
     categoryId: string;
     imageUrl: string;
   };
   submitLabel?: string;
+  redirectPath?: string;
 };
 
-export function ProductForm({ categories, mode, action, defaultValues, submitLabel }: ProductFormProps) {
+export function ProductForm({
+  categories,
+  branches,
+  role,
+  mode,
+  action,
+  defaultValues,
+  submitLabel,
+  redirectPath = "/vendor/productos"
+}: ProductFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,7 +49,9 @@ export function ProductForm({ categories, mode, action, defaultValues, submitLab
   const [price, setPrice] = useState(defaultValues?.price ?? "");
   const [imageUrl, setImageUrl] = useState(defaultValues?.imageUrl ?? "");
   const [categoryId, setCategoryId] = useState(defaultValues?.categoryId ?? "");
+  const [storeId, setStoreId] = useState(defaultValues?.storeId ?? branches[0]?.id ?? "");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isActive, setIsActive] = useState(defaultValues?.isActive ?? true);
   const [dragging, setDragging] = useState(false);
   const [uploadPending, setUploadPending] = useState(false);
   const [tempProductId] = useState(defaultValues?.id ?? crypto.randomUUID());
@@ -45,7 +62,7 @@ export function ProductForm({ categories, mode, action, defaultValues, submitLab
     if (!saveState.message) return;
     if (saveState.success) {
       toast.success(saveState.message);
-      router.push("/dashboard/productos");
+      router.push(redirectPath);
       router.refresh();
       return;
     }
@@ -62,6 +79,8 @@ export function ProductForm({ categories, mode, action, defaultValues, submitLab
     if (Number.isFinite(n)) return n.toFixed(2);
     return "0.00";
   }, [price]);
+
+  const shouldHideStoreSelector = role === "VENDOR" && branches.length === 1;
 
   const handleFilePick = (file: File | null) => {
     if (!file) return;
@@ -104,6 +123,8 @@ export function ProductForm({ categories, mode, action, defaultValues, submitLab
         >
           {mode === "edit" && defaultValues?.id ? <input type="hidden" name="id" value={defaultValues.id} /> : null}
           <input type="hidden" name="imageUrl" value={imageUrl} />
+          <input type="hidden" name="isActive" value={String(isActive)} />
+          {shouldHideStoreSelector ? <input type="hidden" name="storeId" value={storeId} /> : null}
 
           <section className="rounded-2xl border border-slate-100 bg-white p-7 shadow-sm">
             <h2 className="mb-4 text-sm font-semibold tracking-tight text-slate-900">Información básica</h2>
@@ -131,6 +152,28 @@ export function ProductForm({ categories, mode, action, defaultValues, submitLab
                   className="w-full resize-y rounded-xl border-slate-200 focus:border-teal-300 focus:ring-2 focus:ring-teal-200"
                 />
                 {saveState.errors?.description ? <p className="mt-1 text-xs text-rose-600">{saveState.errors.description}</p> : null}
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Tienda</label>
+                <select
+                  name="storeId"
+                  required
+                  value={storeId}
+                  disabled={shouldHideStoreSelector}
+                  onChange={(e) => setStoreId(e.target.value)}
+                  className="h-12 w-full rounded-xl border-slate-200 focus:border-teal-300 focus:ring-2 focus:ring-teal-200 disabled:opacity-70"
+                >
+                  {!shouldHideStoreSelector ? <option value="">Selecciona una tienda</option> : null}
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+                {saveState.errors?.storeId ? <p className="mt-1 text-xs text-rose-600">{saveState.errors.storeId}</p> : null}
+                {shouldHideStoreSelector ? (
+                  <p className="mt-1 text-xs text-slate-500">Tu cuenta está vinculada a una sola tienda.</p>
+                ) : null}
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Categoría</label>
@@ -181,6 +224,17 @@ export function ProductForm({ categories, mode, action, defaultValues, submitLab
                   className="h-12 w-full rounded-xl border-slate-200 focus:border-teal-300 focus:ring-2 focus:ring-teal-200"
                 />
                 {saveState.errors?.stock ? <p className="mt-1 text-xs text-rose-600">{saveState.errors.stock}</p> : null}
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Estado</label>
+                <select
+                  value={String(isActive)}
+                  onChange={(e) => setIsActive(e.target.value === "true")}
+                  className="h-12 w-full rounded-xl border-slate-200 focus:border-teal-300 focus:ring-2 focus:ring-teal-200"
+                >
+                  <option value="true">Activo</option>
+                  <option value="false">Inactivo</option>
+                </select>
               </div>
             </div>
           </section>

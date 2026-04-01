@@ -19,6 +19,14 @@ function getEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "SUPABASE_SERVICE_ROLE_KEY") 
     console.error("⚠️ Error Crítico: Faltan variables de entorno de Supabase en el servidor");
     throw new Error(`${name} no esta configurado.`);
   }
+  if (
+    name === "SUPABASE_SERVICE_ROLE_KEY" &&
+    (value === "tu_llave_secreta_aqui" || !value.includes("."))
+  ) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY no es valida. Configura la service_role key real desde Supabase Project Settings > API."
+    );
+  }
   return value;
 }
 

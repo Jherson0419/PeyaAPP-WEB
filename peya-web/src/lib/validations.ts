@@ -20,6 +20,12 @@ export const productSchema = z.object({
     .refine((value) => Number(value) >= 0, "El stock no puede ser negativo.")
     .transform((value) => Number(value)),
   categoryId: z.string().trim().min(1, "Selecciona una categoria."),
+  storeId: z.string().trim().optional().default(""),
+  isActive: z
+    .enum(["true", "false"])
+    .optional()
+    .default("true")
+    .transform((value) => value === "true"),
   imageUrl: z
     .string()
     .trim()
@@ -30,3 +36,18 @@ export const productSchema = z.object({
 });
 
 export type ProductInput = z.infer<typeof productSchema>;
+
+export const vendorBranchSchema = z.object({
+  name: z.string().trim().min(1, "El nombre es obligatorio.").max(120),
+  address: z.string().trim().min(1, "La dirección es obligatoria.").max(500),
+  categoryId: z.string().trim().min(1, "Selecciona una categoría válida."),
+  iconUrl: z
+    .string()
+    .trim()
+    .min(1, "Sube una imagen para el icono de la sucursal.")
+    .refine((value) => value.startsWith("/") || /^https?:\/\//.test(value), "La URL del icono no es válida."),
+  latitude: z.number().gte(-90).lte(90),
+  longitude: z.number().gte(-180).lte(180)
+});
+
+export type VendorBranchInput = z.infer<typeof vendorBranchSchema>;

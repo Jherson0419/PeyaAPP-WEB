@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { deleteProductAction, toggleProductStatusAction } from "@/app/dashboard/productos/actions";
+import { deleteProductAction, toggleProductStatusAction } from "@/app/actions/product-actions";
 
 type ProductRow = {
   id: string;
@@ -41,7 +41,7 @@ export function ProductsTableClient({ products, categories }: { products: Produc
           <p className="mt-2 text-sm text-slate-500">Gestiona precios, stock y visibilidad en la app.</p>
         </div>
         <Link
-          href="/dashboard/productos/nuevo"
+          href="/vendor/productos/nuevo"
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-teal-700 hover:shadow"
         >
           <Plus className="h-4 w-4" strokeWidth={2} />
@@ -138,7 +138,7 @@ export function ProductsTableClient({ products, categories }: { products: Produc
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2 opacity-40 transition-opacity group-hover:opacity-100">
                         <Link
-                          href={`/dashboard/productos/${product.id}/editar`}
+                          href={`/vendor/productos/${product.id}/editar`}
                           className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50"
                         >
                           <Pencil className="h-3.5 w-3.5" />

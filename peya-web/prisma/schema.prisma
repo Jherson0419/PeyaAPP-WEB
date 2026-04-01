@@ -13,6 +13,13 @@ enum ProfileRole {
   ADMIN
 }
 
+enum Role {
+  ADMIN
+  VENDOR
+  CLIENT
+  RIDER
+}
+
 enum OrderStatus {
   PENDING
   PREPARING
@@ -21,21 +28,21 @@ enum OrderStatus {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String         @id @default(cuid())
+  email          String         @unique
+  passwordHash   String
+  name           String
+  role           Role           @default(CLIENT)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  vendorBranches VendorBranch[]
 }
 
-model Category {
-  id        String    @id @default(cuid())
-  name      String    @unique
-  icon      String?
-  products  Product[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+model ProductCategory {
+  id         String    @id @default(uuid())
+  name       String
+  verticalId String?
+  products   Product[]
 }
 
 model Product {
@@ -50,9 +57,9 @@ model Product {
   updatedAt   DateTime @updatedAt
 
   categoryId String
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  storeId    String?  @db.Uuid
-  store      Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  category   ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  storeId    String?         @db.Uuid
+  store      Store?          @relation(fields: [storeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([categoryId])
   @@index([isActive])
@@ -72,15 +79,63 @@ model Profile {
   stores       Store[]
 }
 
+/// El nivel más alto de la taxonomía (Ej: Supermercados, Farmacias, Restaurantes).
+model Vertical {
+  id               String           @id @default(uuid()) @db.Uuid
+  name             String           @unique
+  imageUrl         String?
+  isActive         Boolean          @default(true)
+  branches         VendorBranch[]
+  branchCategories BranchCategory[]
+}
+
+/// Sucursales creadas desde el panel web del vendedor (lat/lng para rutas y mapa cliente).
+model BranchCategory {
+  id         String         @id @default(uuid()) @db.Uuid
+  name       String         @unique
+  iconUrl    String? // URL del tipo de negocio específico (ej: "Carnicería")
+  verticalId String?        @db.Uuid
+  vertical   Vertical?      @relation(fields: [verticalId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @default(now()) @updatedAt
+  branches   VendorBranch[]
+}
+
+/// Sucursales de vendedor con categoría para el catálogo/monitor.
+model VendorBranch {
+  id         String         @id @default(uuid()) @db.Uuid
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  verticalId String?        @db.Uuid
+  vertical   Vertical?      @relation(fields: [verticalId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  categoryId String         @db.Uuid
+  category   BranchCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  name       String
+  address    String
+  iconUrl    String?
+  latitude   Decimal        @db.Decimal(10, 8)
+  longitude  Decimal        @db.Decimal(11, 8)
+  isActive   Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([verticalId])
+  @@index([categoryId])
+  @@index([isActive])
+}
+
 model Store {
   id        String    @id @default(uuid()) @db.Uuid
   name      String
-  ownerId   String    @db.Uuid
+  ownerId   String?   @db.Uuid
   address   String
   imageUrl  String?
+  latitude  Float?
+  longitude Float?
   isOpen    Boolean   @default(true)
   createdAt DateTime  @default(now())
-  owner     Profile   @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  owner     Profile?  @relation(fields: [ownerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   products  Product[]
   orders    Order[]
 
